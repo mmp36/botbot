@@ -4,12 +4,13 @@ from aiogram.filters import Command, CommandObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from datetime import datetime, timedelta
+import logging
 
 from database import DatabaseManager
 from keyboards import KeyboardManager
-from config import ADMIN_IDS  # Add your admin IDs to config.py
+from config import Config
 
-router = Router()
+logger = logging.getLogger(__name__)
 
 class AdminStates(StatesGroup):
     waiting_for_premium_duration = State()
@@ -18,39 +19,49 @@ class AdminStates(StatesGroup):
 class AdminHandlers:
     def __init__(self, db: DatabaseManager):
         self.db = db
+        self.router = Router()
+        self._setup_handlers()
+
+    def _setup_handlers(self):
+        """Setup all admin handlers"""
+        # Admin commands
+        self.router.message.register(self.add_premium_command, Command("add_premium"))
+        self.router.message.register(self.remove_premium_command, Command("remove_premium"))
+        self.router.message.register(self.check_premium_command, Command("check_premium"))
+        self.router.message.register(self.list_premium_command, Command("list_premium"))
 
     async def is_admin(self, user_id: int) -> bool:
         """Check if user is admin"""
-        return user_id in ADMIN_IDS
+        return user_id in Config.ADMIN_IDS
 
-    @router.message(Command("add_premium"))
     async def add_premium_command(self, message: Message, command: CommandObject):
-        """Handle /add_premium command
-        Usage: /add_premium user_id days
-        Example: /add_premium 123456789 30"""
-        
+        """Handle /add_premium command"""
         if not await self.is_admin(message.from_user.id):
-            return await message.reply("⛔️ این دستور فقط برای ادمین‌ها در دسترس است.")
+            await message.reply("⛔️ این دستور فقط برای ادمین‌ها در دسترس است.")
+            return
 
         try:
-            args = command.args.split()
-            if len(args) != 2:
-                return await message.reply(
+            if not command.args:
+                await message.reply(
                     "❌ فرمت نادرست. استفاده صحیح:\n"
                     "/add_premium USER_ID DAYS\n"
                     "مثال: /add_premium 123456789 30"
                 )
+                return
+
+            args = command.args.split()
+            if len(args) != 2:
+                await message.reply("❌ لطفاً شناسه کاربر و تعداد روز را وارد کنید.")
+                return
 
             user_id = int(args[0])
             days = int(args[1])
 
             if days <= 0:
-                return await message.reply("❌ تعداد روز باید بیشتر از صفر باشد.")
+                await message.reply("❌ تعداد روز باید بیشتر از صفر باشد.")
+                return
 
-            # Calculate expiration date
             expiration_date = datetime.now() + timedelta(days=days)
-            
-            # Update user's premium status
             if self.db.update_premium_status(user_id, expiration_date):
                 await message.reply(
                     f"✅ کاربر {user_id} با موفقیت پرمیوم شد!\n"
@@ -62,27 +73,25 @@ class AdminHandlers:
         except ValueError:
             await message.reply("❌ لطفاً شناسه کاربر و تعداد روز را به درستی وارد کنید.")
         except Exception as e:
-            await message.reply(f"❌ خطایی رخ داد: {str(e)}")
+            logger.error(f"Error in add_premium_command: {e}")
+            await message.reply("❌ خطایی رخ داد.")
 
-    @router.message(Command("remove_premium"))
     async def remove_premium_command(self, message: Message, command: CommandObject):
-        """Handle /remove_premium command
-        Usage: /remove_premium user_id"""
-        
+        """Handle /remove_premium command"""
         if not await self.is_admin(message.from_user.id):
-            return await message.reply("⛔️ این دستور فقط برای ادمین‌ها در دسترس است.")
+            await message.reply("⛔️ این دستور فقط برای ادمین‌ها در دسترس است.")
+            return
 
         try:
             if not command.args:
-                return await message.reply(
+                await message.reply(
                     "❌ فرمت نادرست. استفاده صحیح:\n"
                     "/remove_premium USER_ID\n"
                     "مثال: /remove_premium 123456789"
                 )
+                return
 
             user_id = int(command.args)
-            
-            # Remove premium status
             if self.db.remove_premium_status(user_id):
                 await message.reply(f"✅ وضعیت پرمیوم کاربر {user_id} با موفقیت حذف شد.")
             else:
@@ -91,29 +100,32 @@ class AdminHandlers:
         except ValueError:
             await message.reply("❌ لطفاً شناسه کاربر را به درستی وارد کنید.")
         except Exception as e:
-            await message.reply(f"❌ خطایی رخ داد: {str(e)}")
+            logger.error(f"Error in remove_premium_command: {e}")
+            await message.reply("❌ خطایی رخ داد.")
 
-    @router.message(Command("check_premium"))
     async def check_premium_command(self, message: Message, command: CommandObject):
-        """Handle /check_premium command
-        Usage: /check_premium user_id"""
-        
+        """Handle /check_premium command"""
         if not await self.is_admin(message.from_user.id):
-            return await message.reply("⛔️ این دستور فقط برای ادمین‌ها در دسترس است.")
+            await message.reply("⛔️ این دستور فقط برای ادمین‌ها در دسترس است.")
+            return
 
         try:
             if not command.args:
-                return await message.reply(
+                await message.reply(
                     "❌ فرمت نادرست. استفاده صحیح:\n"
                     "/check_premium USER_ID\n"
                     "مثال: /check_premium 123456789"
                 )
+                return
 
             user_id = int(command.args)
             premium_info = self.db.get_premium_info(user_id)
             
             if premium_info:
-                expiration_date = datetime.strptime(premium_info['expiration_date'], '%Y-%m-%d %H:%M:%S')
+                expiration_date = datetime.strptime(
+                    premium_info['expiration_date'],
+                    '%Y-%m-%d %H:%M:%S'
+                )
                 is_active = expiration_date > datetime.now()
                 
                 await message.reply(
@@ -127,24 +139,28 @@ class AdminHandlers:
         except ValueError:
             await message.reply("❌ لطفاً شناسه کاربر را به درستی وارد کنید.")
         except Exception as e:
-            await message.reply(f"❌ خطایی رخ داد: {str(e)}")
+            logger.error(f"Error in check_premium_command: {e}")
+            await message.reply("❌ خطایی رخ داد.")
 
-    @router.message(Command("list_premium"))
     async def list_premium_command(self, message: Message):
-        """Handle /list_premium command to list all premium users"""
-        
+        """Handle /list_premium command"""
         if not await self.is_admin(message.from_user.id):
-            return await message.reply("⛔️ این دستور فقط برای ادمین‌ها در دسترس است.")
+            await message.reply("⛔️ این دستور فقط برای ادمین‌ها در دسترس است.")
+            return
 
         try:
             premium_users = self.db.get_all_premium_users()
             
             if not premium_users:
-                return await message.reply("📝 هیچ کاربر پرمیومی یافت نشد.")
+                await message.reply("📝 هیچ کاربر پرمیومی یافت نشد.")
+                return
 
             response = "📋 لیست کاربران پرمیوم:\n\n"
             for user in premium_users:
-                expiration_date = datetime.strptime(user['expiration_date'], '%Y-%m-%d %H:%M:%S')
+                expiration_date = datetime.strptime(
+                    user['expiration_date'],
+                    '%Y-%m-%d %H:%M:%S'
+                )
                 is_active = expiration_date > datetime.now()
                 
                 response += (
@@ -155,3 +171,7 @@ class AdminHandlers:
                 )
 
             await message.reply(response)
+
+        except Exception as e:
+            logger.error(f"Error in list_premium_command: {e}")
+            await message.reply("❌ خطایی رخ داد.")
