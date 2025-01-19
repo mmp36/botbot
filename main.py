@@ -9,7 +9,7 @@ from config import Config
 from database import DatabaseManager
 from analyzer import ChannelAnalyzer
 from handlers import BotHandlers
-
+from admin_handlers import AdminHandlers
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
