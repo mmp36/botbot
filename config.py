@@ -3,12 +3,12 @@ from pathlib import Path
 
 class Config:
     # Bot Configuration
-   BOT_TOKEN = os.getenv("BOT_TOKEN")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Telegram API Configuration
-API_ID = os.getenv("API_ID")
-API_HASH = os.getenv("API_HASH")
+    API_ID = os.getenv("API_ID")
+    API_HASH = os.getenv("API_HASH")
 
     # Database Configuration
     DB_NAME = "bot_database.db"
