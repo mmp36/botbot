@@ -39,7 +39,10 @@ class BotHandlers:
         self.router.callback_query.register(self.about_callback, F.data == "about")
         self.router.callback_query.register(self.back_to_main_callback, F.data == "back_to_main")
         self.router.callback_query.register(self.handle_payment_selection, F.data.startswith("pay_"))
-
+        self.router.message.register(self.add_premium, Command("add_premium"))
+        self.router.message.register(self.remove_premium, Command("remove_premium"))
+        self.router.message.register(self.check_premium, Command("check_premium"))
+        self.router.message.register(self.list_premium, Command("list_premium"))
         # State handlers
         self.router.message.register(self.handle_channel_input, BotStates.waiting_for_channel)
 
@@ -190,7 +193,7 @@ class BotHandlers:
             Messages.ABOUT,
             reply_markup=KeyboardManager.back_button()
         )
-
+    
     async def back_to_main_callback(self, callback: CallbackQuery, state: FSMContext):
         """Handle back button click"""
         await state.clear()
@@ -198,3 +201,101 @@ class BotHandlers:
             Messages.WELCOME,
             reply_markup=KeyboardManager.main_menu()
         )
+    async def add_premium(self, message: Message):
+        """Handle /add_premium command"""
+        if message.from_user.id not in ADMIN_IDS:
+            return await message.reply("⛔️ دسترسی محدود به ادمین")
+        
+        try:
+            args = message.text.split()[1:]
+            if len(args) != 2:
+                return await message.reply(
+                    "⚠️ فرمت صحیح:\n"
+                    "/add_premium USER_ID DAYS"
+                )
+            
+            user_id = int(args[0])
+            days = int(args[1])
+            
+            if days <= 0:
+                return await message.reply("❌ تعداد روز باید بیشتر از صفر باشد")
+            
+            expiry_date = datetime.now() + timedelta(days=days)
+            if self.db.update_premium_status(user_id, expiry_date):
+                await message.reply(
+                    f"✅ کاربر {user_id} پرمیوم شد\n"
+                    f"📅 تاریخ انقضا: {expiry_date.strftime('%Y-%m-%d')}"
+                )
+            else:
+                await message.reply("❌ خطا در ثبت وضعیت پرمیوم")
+                
+        except ValueError:
+            await message.reply("❌ خطا در فرمت ورودی")
+        except Exception as e:
+            await message.reply(f"❌ خطای سیستمی: {str(e)}")
+
+    async def remove_premium(self, message: Message):
+        """Handle /remove_premium command"""
+        if message.from_user.id not in ADMIN_IDS:
+            return await message.reply("⛔️ دسترسی محدود به ادمین")
+        
+        try:
+            user_id = int(message.text.split()[1])
+            if self.db.remove_premium_status(user_id):
+                await message.reply(f"✅ وضعیت پرمیوم کاربر {user_id} حذف شد")
+            else:
+                await message.reply("❌ خطا در حذف وضعیت پرمیوم")
+        except (ValueError, IndexError):
+            await message.reply(
+                "⚠️ فرمت صحیح:\n"
+                "/remove_premium USER_ID"
+            )
+
+    async def check_premium(self, message: Message):
+        """Handle /check_premium command"""
+        if message.from_user.id not in ADMIN_IDS:
+            return await message.reply("⛔️ دسترسی محدود به ادمین")
+        
+        try:
+            user_id = int(message.text.split()[1])
+            info = self.db.get_premium_info(user_id)
+            
+            if info:
+                expiry = datetime.strptime(info['expiration_date'], '%Y-%m-%d %H:%M:%S')
+                is_active = expiry > datetime.now()
+                
+                await message.reply(
+                    f"👤 کاربر: {user_id}\n"
+                    f"🔰 وضعیت: {'فعال ✅' if is_active else 'منقضی شده ❌'}\n"
+                    f"📅 تاریخ انقضا: {expiry.strftime('%Y-%m-%d')}"
+                )
+            else:
+                await message.reply("❌ کاربر پرمیوم نیست")
+        except (ValueError, IndexError):
+            await message.reply(
+                "⚠️ فرمت صحیح:\n"
+                "/check_premium USER_ID"
+            )
+
+    async def list_premium(self, message: Message):
+        """Handle /list_premium command"""
+        if message.from_user.id not in ADMIN_IDS:
+            return await message.reply("⛔️ دسترسی محدود به ادمین")
+        
+        users = self.db.get_all_premium_users()
+        if not users:
+            return await message.reply("📝 هیچ کاربر پرمیومی یافت نشد")
+        
+        text = "📋 لیست کاربران پرمیوم:\n\n"
+        for user in users:
+            expiry = datetime.strptime(user['expiration_date'], '%Y-%m-%d %H:%M:%S')
+            is_active = expiry > datetime.now()
+            
+            text += (
+                f"👤 کاربر: {user['user_id']}\n"
+                f"🔰 وضعیت: {'فعال ✅' if is_active else 'منقضی شده ❌'}\n"
+                f"📅 انقضا: {expiry.strftime('%Y-%m-%d')}\n"
+                "──────────────\n"
+            )
+        
+        await message.reply(text)
