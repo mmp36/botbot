@@ -44,7 +44,7 @@ async def main():
         # Initialize and setup handlers
         handlers = BotHandlers(db, analyzer)
         dp.include_router(handlers.router)
-
+        admin_handlers = AdminHandlers(db)
         # Start polling
         logger.info("Bot is starting...")
         await dp.start_polling(bot)
