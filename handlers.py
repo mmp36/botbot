@@ -10,10 +10,10 @@ from database import DatabaseManager
 from analyzer import ChannelAnalyzer
 from keyboards import KeyboardManager
 from messages import Messages
-from config import ADMIN_IDS
+
 
 logger = logging.getLogger(__name__)
-
+ADMIN_IDS =336543509
 class BotStates(StatesGroup):
     waiting_for_channel = State()
 
