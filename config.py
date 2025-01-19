@@ -3,6 +3,7 @@ from pathlib import Path
 
 class Config:
     # Bot Configuration
+    ADMIN_IDS =336543509
     BOT_TOKEN = "7777044856:AAEsgvgNPANF3KtMl8lqsJAflYknVu7RTgY"
     GEMINI_API_KEY = "AIzaSyD0vBAb0-1cfIzqh7qcTtAoYesVEcxgLfY"
     API_ID= 26154965
