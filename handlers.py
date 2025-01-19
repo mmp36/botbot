@@ -12,7 +12,7 @@ from keyboards import KeyboardManager
 from messages import Messages
 
 logger = logging.getLogger(__name__)
-
+ADMIN_IDS =336543509
 
 class BotStates(StatesGroup):
     """Bot states for FSM"""
