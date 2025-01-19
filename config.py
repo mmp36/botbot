@@ -3,10 +3,10 @@ from pathlib import Path
 
 class Config:
     # Bot Configuration
-    BOT_TOKEN = "7777044856:AAEsgvgNPANF3KtMl8lqsJAflYknVu7RTgY"
-    GEMINI_API_KEY = "AIzaSyD0vBAb0-1cfIzqh7qcTtAoYesVEcxgLfY"
-    API_ID= 26154965
-    API_HASH = 'e1d80dfcadf6e9ee5a370491ca05b6ab'
+    BOT_TOKEN = 
+    GEMINI_API_KEY = 
+    API_ID= 
+    API_HASH = 
 
     # Database Configuration
     DB_NAME = "bot_database.db"
