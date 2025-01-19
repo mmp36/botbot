@@ -1,3 +1,5 @@
+from datetime import datetime
+from typing import Optional, Dict, List, Tuple
 def _setup_database(self):
     """Initialize database tables"""
     with self._get_connection() as conn:
